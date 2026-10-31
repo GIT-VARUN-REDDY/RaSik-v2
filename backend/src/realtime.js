@@ -32,13 +32,11 @@ function iceServers(userId) {
 }
 
 export async function listenerState(userId) {
-  const l = await Listener.findOne({ user_id: userId }, { approval: 1, is_available: 1 }).lean();
+  const uid = String(userId);
+  const l = await Listener.findOne({ user_id: uid }, { approval: 1, is_available: 1 }).lean();
   if (!l || l.approval !== 'approved' || !l.is_available) return 'offline';
-  if (userCall.has(userId)) return 'busy';
-  if (sockets.has(userId)) return 'online';
-  const u = await User.findById(userId, { push_token: 1, last_seen: 1 }).lean();
-  if (u?.push_token && now() - (u.last_seen || 0) < 5 * 60_000) return 'online';
-  return 'offline';
+  if (userCall.has(uid)) return 'busy';
+  return 'online';
 }
 
 export async function broadcastPresence(listenerId) {
@@ -349,7 +347,8 @@ export async function attachRealtime(server) {
         const u = await userFromToken(String(m.token || ''));
         if (!u || !u.onboarded) { send(ws, { t: 'auth:fail' }); return ws.close(4003, 'unauthorized'); }
         clearTimeout(authTimer);
-        ws.user = { id: u.id, gender: u.gender, role: u.role };
+        const uid = String(u._id || u.id);
+        ws.user = { id: uid, _id: uid, gender: u.gender, role: u.role };
         return await onAuthed(ws);
       }
       try { await handle(ws, m); } catch (e) { console.error('[ws] handler error', e); err(ws, 'server', 'Something went wrong.', m.ref); }

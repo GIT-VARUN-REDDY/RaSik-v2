@@ -8,6 +8,7 @@ import path from 'node:path';
 import { ZodError } from 'zod';
 import { config } from './config.js';
 import { HttpError, userFromToken } from './auth.js';
+import { User, now } from './db.js';
 import authRoutes from './routes/auth.js';
 import meRoutes from './routes/me.js';
 import discoverRoutes from './routes/discover.js';
@@ -39,6 +40,7 @@ export async function buildApp() {
     const u = h.startsWith('Bearer ') ? await userFromToken(h.slice(7)) : null;
     if (!u) throw new HttpError(401, 'Please sign in again.', 'unauthorized');
     req.user = u;
+    User.updateOne({ _id: u._id || u.id }, { $set: { last_seen: now() } }).catch(() => {});
   });
 
   app.setErrorHandler((e, req, reply) => {

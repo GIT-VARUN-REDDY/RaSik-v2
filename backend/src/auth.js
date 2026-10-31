@@ -141,7 +141,7 @@ export async function userFromToken(token) {
     const { payload } = await jwtVerify(token, secret, { algorithms: ['HS256'] });
     const u = await User.findById(payload.sub).lean();
     if (!u || u.status !== 'active') return null;
-    return u;
+    return { ...u, id: u._id };
   } catch { return null; }
 }
 
