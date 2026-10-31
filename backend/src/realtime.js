@@ -41,12 +41,20 @@ function iceServers(userId) {
   return list;
 }
 
+export const isUserOnline = (userId) => {
+  const set = sockets.get(String(userId));
+  return !!(set && set.size > 0);
+};
+
 export async function listenerState(userId) {
   const uid = String(userId);
   const l = await Listener.findOne({ user_id: uid }, { approval: 1, is_available: 1 }).lean();
   if (!l || l.approval !== 'approved' || !l.is_available) return 'offline';
   if (userCall.has(uid)) return 'busy';
-  return 'online';
+  if (isUserOnline(uid)) return 'online';
+  const u = await User.findById(uid, { last_seen: 1 }).lean();
+  if (u?.last_seen && now() - u.last_seen < 60_000) return 'online';
+  return 'offline';
 }
 
 export async function broadcastPresence(listenerId) {

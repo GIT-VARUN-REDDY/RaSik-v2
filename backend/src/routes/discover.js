@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { HttpError } from '../auth.js';
-import { User, Listener, Block, Favorite } from '../db.js';
+import { User, Listener, Block, Favorite, now } from '../db.js';
 import { listenerCard } from '../util.js';
-import { listenerState, isInCall } from '../realtime.js';
+import { listenerState, isInCall, isUserOnline } from '../realtime.js';
 import { STYLES } from '../config.js';
 
 export default async function (app) {
@@ -47,11 +47,14 @@ export default async function (app) {
     }).lean();
 
     const listenerMap = new Map(approvedListeners.map((l) => [l.user_id, l]));
+    const nowMs = now();
     const states = users.map((u) => {
       const l = listenerMap.get(u._id);
       if (!l || l.approval !== 'approved' || !l.is_available) return 'offline';
       if (isInCall(u._id)) return 'busy';
-      return 'online';
+      if (isUserOnline(u._id)) return 'online';
+      if (u.last_seen && nowMs - u.last_seen < 60_000) return 'online';
+      return 'offline';
     });
 
     let list = users.map((u, i) => {
