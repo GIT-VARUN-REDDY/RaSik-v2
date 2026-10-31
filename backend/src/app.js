@@ -49,6 +49,13 @@ export async function buildApp() {
     return reply.code(500).send({ error: 'Something went wrong. Please try again.' });
   });
 
+  app.get('/', async () => ({
+    service: 'RaSik API',
+    status: 'online',
+    version: '2.0.0',
+    health: '/health',
+  }));
+
   app.get('/health', async () => ({ ok: true, t: Date.now() }));
 
   // Public media only (avatars, voice intros). Verification videos live in a separate private folder.
