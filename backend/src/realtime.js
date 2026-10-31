@@ -22,7 +22,17 @@ const send = (ws, msg) => { if (ws.readyState === 1) ws.send(JSON.stringify(msg)
 const sendUser = (userId, msg) => sockets.get(userId)?.forEach((ws) => send(ws, msg));
 
 function iceServers(userId) {
-  const list = [{ urls: config.webrtc.stun }];
+  const list = [
+    {
+      urls: [
+        'stun:stun.l.google.com:19302',
+        'stun:stun1.l.google.com:19302',
+        'stun:stun2.l.google.com:19302',
+        'stun:stun3.l.google.com:19302',
+        'stun:stun4.l.google.com:19302',
+      ],
+    },
+  ];
   if (config.webrtc.turnUrls.length && config.webrtc.turnSecret) {
     const username = `${Math.floor(Date.now() / 1000) + 4 * 3600}:${userId}`;
     const credential = crypto.createHmac('sha1', config.webrtc.turnSecret).update(username).digest('base64');
@@ -50,8 +60,24 @@ export async function pushBalance(userId) {
   if (u) sendUser(userId, { t: 'wallet', coins: u.coins });
 }
 
+export async function getIncomingCallForUser(userId) {
+  const uid = String(userId);
+  const cid = userCall.get(uid);
+  if (!cid) return null;
+  const c = calls.get(cid);
+  if (!c || c.status !== 'ringing' || c.listenerId !== uid) return null;
+  const caller = await User.findById(c.callerId, { name: 1, avatar: 1, age: 1 }).lean();
+  return {
+    callId: c.id,
+    type: c.type,
+    from: { id: c.callerId, name: caller?.name, avatar: mediaUrl(caller?.avatar), age: caller?.age },
+    earnPerMinPaise: Math.round(c.rate * config.economy.listenerPaisePerCoin),
+    ringSeconds: config.ringSeconds,
+  };
+}
+
 export const onlineCount = () => sockets.size;
-export const isInCall = (userId) => userCall.has(userId);
+export const isInCall = (userId) => userCall.has(String(userId));
 
 // ---------------------------------------------------------------------------------------------
 async function billMinute(c) {

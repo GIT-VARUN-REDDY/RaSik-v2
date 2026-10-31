@@ -2,9 +2,16 @@ import { z } from 'zod';
 import { HttpError } from '../auth.js';
 import { Call, User, Listener, Report, Block, uid, now } from '../db.js';
 import { mediaUrl } from '../util.js';
+import { getIncomingCallForUser } from '../realtime.js';
 
 export default async function (app) {
   const auth = { preHandler: app.auth };
+
+  app.get('/calls/active', auth, async (req) => {
+    const me = String(req.user._id || req.user.id);
+    const incoming = await getIncomingCallForUser(me);
+    return { incoming };
+  });
 
   app.get('/calls', auth, async (req) => {
     const me = req.user.id;

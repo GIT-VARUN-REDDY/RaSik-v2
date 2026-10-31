@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { HttpError } from '../auth.js';
 import { User, Listener, Block, Favorite } from '../db.js';
 import { listenerCard } from '../util.js';
-import { listenerState } from '../realtime.js';
+import { listenerState, isInCall } from '../realtime.js';
 import { STYLES } from '../config.js';
 
 export default async function (app) {
@@ -47,7 +47,12 @@ export default async function (app) {
     }).lean();
 
     const listenerMap = new Map(approvedListeners.map((l) => [l.user_id, l]));
-    const states = await Promise.all(users.map((u) => listenerState(u._id)));
+    const states = users.map((u) => {
+      const l = listenerMap.get(u._id);
+      if (!l || l.approval !== 'approved' || !l.is_available) return 'offline';
+      if (isInCall(u._id)) return 'busy';
+      return 'online';
+    });
 
     let list = users.map((u, i) => {
       const l = listenerMap.get(u._id);

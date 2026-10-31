@@ -90,9 +90,9 @@ export const config = {
     ],
   },
   limits: { otpSendPerHourPerIp: num(env.OTP_SEND_PER_HOUR_IP, 10), otpVerifyPerHourPerIp: num(env.OTP_VERIFY_PER_HOUR_IP, 20) },
-  ringSeconds: num(env.RING_SECONDS, 30),
-  connectSeconds: num(env.CONNECT_SECONDS, 30),
-  disconnectGraceSeconds: num(env.GRACE_SECONDS, 12),
+  ringSeconds: num(env.RING_SECONDS, 45),
+  connectSeconds: num(env.CONNECT_SECONDS, 35),
+  disconnectGraceSeconds: num(env.GRACE_SECONDS, 15),
   expoPush: env.EXPO_PUSH !== 'off',
 };
 
