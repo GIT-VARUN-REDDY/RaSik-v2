@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { Button, Chip, Screen, T } from '@/components/ui';
 import { api, ApiError, Me } from '@/lib/api';
 import { useSession } from '@/lib/session';
@@ -9,7 +10,8 @@ import { C, R } from '@/lib/theme';
 const FALLBACK = ['Music', 'Movies', 'Travel', 'Gaming', 'Fitness', 'Foodie', 'Poetry', 'Fashion', 'Cricket', 'Tech', 'Art', 'Anime', 'Books', 'Late-night talks', 'Dance', 'Comedy'];
 
 export default function Onboarding() {
-  const { patch, signOut } = useSession();
+  const { me, patch, reload, signOut } = useSession();
+  const router = useRouter();
   const [step, setStep] = useState(0);
   const [gender, setGender] = useState<'male' | 'female' | null>(null);
   const [name, setName] = useState('');
@@ -18,6 +20,16 @@ export default function Onboarding() {
   const [interests, setInterests] = useState<string[]>(FALLBACK);
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    if (me?.onboarded) {
+      if (me.gender === 'female') {
+        router.replace(me.listener?.approval === 'approved' ? '/(women)' : '/verify');
+      } else {
+        router.replace('/(men)');
+      }
+    }
+  }, [me, router]);
+
   useEffect(() => { api.get<{ interests: string[] }>('/config').then((c) => setInterests(c.interests)).catch(() => {}); }, []);
 
   const ageN = parseInt(age, 10);
@@ -25,10 +37,29 @@ export default function Onboarding() {
 
   const finish = async () => {
     setBusy(true);
-    try { patch(await api.put<Me>('/me/onboarding', { gender, name: name.trim(), age: ageN, interests: picked })); }
-    catch (e) { Alert.alert('Oops', e instanceof ApiError ? e.message : 'Try again.'); }
+    try {
+      const res = await api.put<Me>('/me/onboarding', { gender, name: name.trim(), age: ageN, interests: picked });
+      patch(res);
+      if (res.gender === 'female') {
+        router.replace(res.listener?.approval === 'approved' ? '/(women)' : '/verify');
+      } else {
+        router.replace('/(men)');
+      }
+    } catch (e: any) {
+      if (e?.status === 409 || e?.message?.includes('already set up')) {
+        const fresh = await reload();
+        if (fresh?.gender === 'female') {
+          router.replace(fresh.listener?.approval === 'approved' ? '/(women)' : '/verify');
+        } else {
+          router.replace('/(men)');
+        }
+        return;
+      }
+      Alert.alert('Oops', e instanceof ApiError ? e.message : 'Try again.');
+    }
     setBusy(false);
   };
+
 
   const dots = (
     <View style={{ flexDirection: 'row', gap: 6, marginBottom: 18 }}>

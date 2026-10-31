@@ -26,7 +26,10 @@ export default async function (app) {
   app.put('/me/onboarding', auth, async (req) => {
     const userId = req.user._id || req.user.id;
     const u = await User.findById(userId);
-    if (u.onboarded) throw new HttpError(409, 'Profile already set up.');
+    if (u.onboarded) {
+      return selfView(u);
+    }
+
     const b = z.object({
       gender: z.enum(['male', 'female']),
       name: z.string().min(2).max(30),
