@@ -96,17 +96,68 @@ async function request<T>(method: string, path: string, body?: unknown, form?: F
   return data as T;
 }
 
+function uploadFile<T>(path: string, uri: string, name: string, type: string): Promise<T> {
+  const url = currentBaseUrl + path;
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    if (tokens?.accessToken) {
+      xhr.setRequestHeader('authorization', `Bearer ${tokens.accessToken}`);
+    }
+    xhr.onload = () => {
+      try {
+        const data = JSON.parse(xhr.responseText || '{}');
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(data as T);
+        } else {
+          reject(new ApiError(xhr.status, data.error || 'Upload failed', data.code));
+        }
+      } catch {
+        reject(new ApiError(xhr.status, 'Invalid response from server'));
+      }
+    };
+    xhr.onerror = (e) => {
+      console.warn('[XHR Upload Error]', url, e);
+      const backupUrl = currentBaseUrl.includes('onrender.com') ? 'http://127.0.0.1:8001' : 'https://rasik-v2.onrender.com';
+      const xhrBackup = new XMLHttpRequest();
+      xhrBackup.open('POST', backupUrl + path);
+      if (tokens?.accessToken) {
+        xhrBackup.setRequestHeader('authorization', `Bearer ${tokens.accessToken}`);
+      }
+      xhrBackup.onload = () => {
+        try {
+          const data = JSON.parse(xhrBackup.responseText || '{}');
+          if (xhrBackup.status >= 200 && xhrBackup.status < 300) {
+            currentBaseUrl = backupUrl;
+            resolve(data as T);
+          } else {
+            reject(new ApiError(xhrBackup.status, data.error || 'Upload failed', data.code));
+          }
+        } catch {
+          reject(new ApiError(xhrBackup.status, 'Invalid response from server'));
+        }
+      };
+      xhrBackup.onerror = () => {
+        reject(new ApiError(0, 'Upload network error. Check your connection.', 'network'));
+      };
+      const fBackup = new FormData();
+      fBackup.append('file', { uri, name, type } as any);
+      xhrBackup.send(fBackup);
+    };
+    const f = new FormData();
+    f.append('file', { uri, name, type } as any);
+    xhr.send(f);
+  });
+}
+
 export const api = {
   get: <T,>(p: string) => request<T>('GET', p),
   post: <T,>(p: string, b?: unknown) => request<T>('POST', p, b ?? {}),
   put: <T,>(p: string, b?: unknown) => request<T>('PUT', p, b ?? {}),
   del: <T,>(p: string) => request<T>('DELETE', p),
-  upload: <T,>(p: string, uri: string, name: string, type: string) => {
-    const f = new FormData();
-    f.append('file', { uri, name, type } as unknown as Blob);
-    return request<T>('POST', p, undefined, f);
-  },
+  upload: <T,>(p: string, uri: string, name: string, type: string) => uploadFile<T>(p, uri, name, type),
 };
+
 
 // ---- shared types
 export type ListenerSelf = {
