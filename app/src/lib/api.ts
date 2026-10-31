@@ -48,7 +48,11 @@ async function refresh(): Promise<boolean> {
   return refreshing;
 }
 
-async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = 6000): Promise<Response> {
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = 6000, isForm = false): Promise<Response> {
+  if (isForm) {
+    // Avoid AbortSignal on React Native Android streaming FormData to prevent premature aborts
+    return await fetch(url, init);
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -71,21 +75,20 @@ async function request<T>(method: string, path: string, body?: unknown, form?: F
   const timeoutMs = form ? 60000 : 10000;
   let res: Response;
   try {
-    res = await fetchWithTimeout(currentBaseUrl + path, fetchInit, timeoutMs);
+    res = await fetchWithTimeout(currentBaseUrl + path, fetchInit, timeoutMs, !!form);
   } catch (err: unknown) {
-    const backupUrl = 'https://rasik-v2.onrender.com';
-    if (currentBaseUrl !== backupUrl) {
-      try {
-        res = await fetchWithTimeout(backupUrl + path, fetchInit, timeoutMs);
-        currentBaseUrl = backupUrl;
-      } catch {
-        throw new ApiError(0, `Could not connect to ${currentBaseUrl}. Check your internet connection.`, 'network');
-      }
-    } else {
-      throw new ApiError(0, `Could not connect to ${currentBaseUrl}. Check your internet connection.`, 'network');
+    console.warn('[Network Error on primary]', currentBaseUrl + path, err);
+    // Try backup endpoint (Render <-> local ADB reverse)
+    const backupUrl = currentBaseUrl.includes('onrender.com') ? 'http://127.0.0.1:8001' : 'https://rasik-v2.onrender.com';
+    try {
+      res = await fetchWithTimeout(backupUrl + path, fetchInit, timeoutMs, !!form);
+      currentBaseUrl = backupUrl; // Pin the working endpoint
+    } catch (backupErr: unknown) {
+      console.warn('[Network Error on backup]', backupUrl + path, backupErr);
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new ApiError(0, `Connection error (${detail}). Check your internet connection.`, 'network');
     }
   }
-
 
   if (res.status === 401 && retry && tokens && (await refresh())) return request<T>(method, path, body, form, false);
   const data = await res.json().catch(() => ({}));
