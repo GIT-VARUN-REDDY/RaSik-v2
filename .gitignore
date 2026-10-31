@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# Build outputs
+dist/
+build/
+.expo/
+.expo-shared/
+
+# Android
+app/android/.gradle/
+app/android/build/
+app/android/app/build/
+app/android/.cxx/
+*.apk
+*.aab
+
+# Local data & logs
+data/
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db

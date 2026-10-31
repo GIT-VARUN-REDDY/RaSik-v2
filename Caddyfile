@@ -1,0 +1,4 @@
+api.yourdomain.com {
+  encode gzip
+  reverse_proxy api:5001
+}

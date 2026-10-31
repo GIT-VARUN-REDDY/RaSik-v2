@@ -1,0 +1,23 @@
+# Single-server production stack: API + Caddy (auto-HTTPS) + coturn (TURN relay for calls).
+services:
+  api:
+    build: ./backend
+    restart: always
+    env_file: ./backend/.env
+    volumes: [apidata:/data]
+    expose: ["5001"]
+  caddy:
+    image: caddy:2
+    restart: always
+    ports: ["80:80", "443:443"]
+    volumes: [./Caddyfile:/etc/caddy/Caddyfile, caddydata:/data]
+    depends_on: [api]
+  coturn:
+    image: coturn/coturn:latest
+    restart: always
+    network_mode: host
+    command: >
+      -n --realm=turn.yourdomain.com --use-auth-secret --static-auth-secret=${TURN_SECRET}
+      --listening-port=3478 --min-port=49160 --max-port=49200 --fingerprint --no-cli
+      --no-multicast-peers --denied-peer-ip=10.0.0.0-10.255.255.255 --denied-peer-ip=192.168.0.0-192.168.255.255 --denied-peer-ip=172.16.0.0-172.31.255.255
+volumes: { apidata: {}, caddydata: {} }

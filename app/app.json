@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "RaSik",
+    "slug": "rasik",
+    "version": "2.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "rasik",
+    "newArchEnabled": true,
+    "splash": { "image": "./assets/splash-icon.png", "resizeMode": "contain", "backgroundColor": "#0f0a14" },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.rasik.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "RaSik uses your camera for video calls and profile verification.",
+        "NSMicrophoneUsageDescription": "RaSik uses your microphone for voice and video calls.",
+        "NSPhotoLibraryUsageDescription": "Choose a profile photo.",
+        "UIBackgroundModes": ["audio", "voip"]
+      }
+    },
+    "android": {
+      "package": "com.rasik.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0f0a14",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": ["CAMERA", "RECORD_AUDIO", "MODIFY_AUDIO_SETTINGS", "INTERNET", "VIBRATE", "BLUETOOTH", "BLUETOOTH_CONNECT", "WAKE_LOCK"],
+      "blockedPermissions": ["android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE"],
+      "usesCleartextTraffic": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-web-browser",
+      "expo-dev-client",
+      ["expo-camera", { "cameraPermission": "RaSik uses your camera for video calls and profile verification.", "microphonePermission": "RaSik uses your microphone for voice and video calls.", "recordAudioAndroid": true }],
+      ["expo-audio", { "microphonePermission": "RaSik uses your microphone for voice calls and your voice intro." }],
+      ["expo-image-picker", { "photosPermission": "Choose a profile photo." }],
+      ["expo-notifications", { "color": "#ff4d8d" }],
+      ["expo-build-properties", { "android": { "minSdkVersion": 24 }, "ios": { "deploymentTarget": "16.4" } }],
+      "@config-plugins/react-native-webrtc"
+    ],
+    "experiments": { "typedRoutes": true },
+    "extra": { "eas": { "projectId": "REPLACE_WITH_YOUR_EAS_PROJECT_ID" } }
+  }
+}

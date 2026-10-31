@@ -1,0 +1,50 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RaSik Admin</title>
+<style>
+:root{--bg:#0f0a14;--card:#1b1324;--line:#2e2240;--ink:#f6eefc;--mute:#a597b8;--pink:#ff4d8d;--ok:#35d07f;--bad:#ff5b5b}
+*{box-sizing:border-box}body{margin:0;font:15px system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{display:flex;gap:8px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:18px;margin:0 16px 0 0;color:var(--pink)}
+button,input{font:inherit}button{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer}
+button.on,button.pri{background:var(--pink);border-color:var(--pink);color:#fff}button.ok{background:var(--ok);border-color:var(--ok);color:#06210f}button.bad{background:var(--bad);border-color:var(--bad);color:#fff}
+input{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+main{padding:20px;max-width:1100px;margin:auto}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}.n{font-size:28px;font-weight:800}.m{color:var(--mute);font-size:13px}
+.row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}.row img{width:160px;height:200px;object-fit:cover;border-radius:12px}video{width:240px;border-radius:12px;background:#000}
+.login{max-width:340px;margin:12vh auto;display:grid;gap:10px}.tag{background:var(--line);border-radius:8px;padding:2px 8px;font-size:12px}.code{font-size:30px;font-weight:800;letter-spacing:4px;color:var(--pink)}
+</style></head><body><div id="app"></div>
+<script>
+const $=s=>document.querySelector(s);let T=localStorage.adm||'',tab='stats',phone='';
+const h=(s)=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const inr=p=>'₹'+(p/100).toLocaleString('en-IN');
+async function api(m,u,b){const r=await fetch(u,{method:m,headers:{'content-type':'application/json',authorization:'Bearer '+T},body:b?JSON.stringify(b):undefined});const d=await r.json().catch(()=>({}));if(r.status===401){localStorage.adm=T='';render();throw 0}if(!r.ok){alert(d.error||'Error');throw 0}return d}
+function login(){$('#app').innerHTML=`<div class="login"><h2>RaSik Admin</h2><input id="p" placeholder="Admin mobile number" inputmode="numeric"><button class="pri" id="s">Send OTP</button><div id="o" style="display:none;gap:10px;grid-template-columns:1fr"><input id="c" placeholder="6-digit OTP" inputmode="numeric"><button class="pri" id="v">Verify</button></div></div>`;
+$('#s').onclick=async()=>{const r=await fetch('/auth/otp/send',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({phone:$('#p').value})});const d=await r.json();if(!r.ok)return alert(d.error);phone=$('#p').value;$('#o').style.display='grid'};
+$('#v').onclick=async()=>{const r=await fetch('/auth/otp/verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({phone,code:$('#c').value})});const d=await r.json();if(!r.ok)return alert(d.error);if(d.user.role!=='admin')return alert('Not an admin number');localStorage.adm=T=d.accessToken;render()}}
+async function render(){if(!T)return login();
+$('#app').innerHTML=`<header><h1>🌸 RaSik Admin</h1>${['stats','verifications','payouts','reports'].map(t=>`<button class="${t===tab?'on':''}" data-t="${t}">${t}</button>`).join('')}<span style="flex:1"></span><button id="lo">Sign out</button></header><main id="m">Loading…</main>`;
+document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{tab=b.dataset.t;render()});$('#lo').onclick=()=>{localStorage.adm=T='';render()};
+try{await views[tab]()}catch(e){}}
+const views={
+async stats(){const s=await api('GET','/admin/stats');const k=[['Members',s.men],['Listeners live',s.listeners],['Pending review',s.pending],['Connected now',s.connectedNow],['Coin revenue',inr(s.revenuePaise)],['Listener earnings',inr(s.listenerEarnedPaise)],['Open payouts',s.pendingPayouts],['Open reports',s.openReports]];
+$('#m').innerHTML=`<div class="grid">${k.map(([a,b])=>`<div class="card"><div class="n">${b}</div><div class="m">${a}</div></div>`).join('')}</div>`},
+async verifications(){const {items}=await api('GET','/admin/verifications?status=pending');
+$('#m').innerHTML=items.length?items.map(i=>`<div class="card" style="margin-bottom:14px"><div class="row"><img src="${h(i.avatar)}"><div><video id="v${i.id}" controls playsinline></video><div class="m">Verification video</div></div>
+<div style="flex:1;min-width:240px"><h3 style="margin:0 0 6px">${h(i.name)}, ${i.age}</h3><div class="m">${h(i.phone)}</div><p>She must say aloud: <span class="code">${h(i.challenge)}</span></p>
+<audio controls src="${h(i.voice)}"></audio><div style="margin:8px 0">${i.interests.map(x=>`<span class="tag">${h(x)}</span> `).join('')}</div>
+<p class="m">Check: face in video matches profile photo · she says the code · voice matches intro · live person (not a screen/photo) · photo is appropriate, no contact info.</p>
+<button class="ok" data-a="${i.id}">Approve</button> <button class="bad" data-r="${i.id}">Reject</button></div></div></div>`).join(''):'<p class="m">Nothing waiting for review 🎉</p>';
+for(const i of items){fetch('/admin/media/'+i.video_file,{headers:{authorization:'Bearer '+T}}).then(r=>r.blob()).then(b=>{const v=document.getElementById('v'+i.id);if(v)v.src=URL.createObjectURL(b)})}
+document.querySelectorAll('[data-a]').forEach(b=>b.onclick=async()=>{await api('POST',`/admin/verifications/${b.dataset.a}/approve`);render()});
+document.querySelectorAll('[data-r]').forEach(b=>b.onclick=async()=>{const r=prompt('Reason shown to her (e.g. "Face not clearly visible, please retake"):');if(r){await api('POST',`/admin/verifications/${b.dataset.r}/reject`,{reason:r});render()}})},
+async payouts(){const {items}=await api('GET','/admin/payouts');
+$('#m').innerHTML=items.length?`<div class="card"><table style="width:100%;border-collapse:collapse">${items.map(p=>`<tr style="border-top:1px solid var(--line)"><td style="padding:10px">${h(p.name)}<div class="m">${h(p.phone)}</div></td><td><b>${inr(p.amountPaise)}</b></td><td>${h(p.upiId)}</td><td style="text-align:right"><button class="ok" data-p="${p.id}">Mark paid</button> <button class="bad" data-x="${p.id}">Reject</button></td></tr>`).join('')}</table></div><p class="m">Pay each UPI ID from your bank/UPI app, then enter the UTR here. Deduct TDS where applicable and keep records for GST/TDS filings.</p>`:'<p class="m">No withdrawals waiting.</p>';
+document.querySelectorAll('[data-p]').forEach(b=>b.onclick=async()=>{const r=prompt('UPI reference / UTR number:');if(r){await api('POST',`/admin/payouts/${b.dataset.p}/paid`,{ref:r});render()}});
+document.querySelectorAll('[data-x]').forEach(b=>b.onclick=async()=>{const r=prompt('Reason (refunded to her balance):');if(r){await api('POST',`/admin/payouts/${b.dataset.x}/reject`,{note:r});render()}})},
+async reports(){const {items}=await api('GET','/admin/reports');
+$('#m').innerHTML=items.length?items.map(r=>`<div class="card" style="margin-bottom:12px"><b>${h(r.reporterName)}</b> reported <b>${h(r.targetName)}</b> <span class="tag">${h(r.targetStatus)}</span><p>${h(r.reason)}</p><div class="m">${new Date(r.createdAt).toLocaleString()} ${r.callId?'· call '+h(r.callId):''}</div><div id="ch${r.id}"></div>
+${r.callId?`<button data-c="${r.id}|${r.callId}">View call chat</button> `:''}<button class="bad" data-b="${r.targetId}|${r.id}">Ban user</button> <button data-d="${r.id}">Dismiss</button></div>`).join(''):'<p class="m">No open reports.</p>';
+document.querySelectorAll('[data-c]').forEach(b=>b.onclick=async()=>{const [rid,cid]=b.dataset.c.split('|');const d=await api('GET',`/admin/calls/${cid}/messages`);$('#ch'+rid).innerHTML=d.items.map(m=>`<div class="m">${h(m.text)}</div>`).join('')||'<div class="m">No chat messages.</div>'});
+document.querySelectorAll('[data-b]').forEach(b=>b.onclick=async()=>{const [u,r]=b.dataset.b.split('|');if(confirm('Ban this user?')){await api('POST',`/admin/users/${u}/ban`);await api('POST',`/admin/reports/${r}/resolve`);render()}});
+document.querySelectorAll('[data-d]').forEach(b=>b.onclick=async()=>{await api('POST',`/admin/reports/${b.dataset.d}/resolve`);render()})}};
+render();
+</script></body></html>
