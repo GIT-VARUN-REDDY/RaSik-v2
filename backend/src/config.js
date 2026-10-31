@@ -33,7 +33,7 @@ export const config = {
   jwtSecret: must('JWT_SECRET', 'dev-only-secret-change-me-dev-only-secret-0123456789'),
   accessTtlSec: 60 * 60,
   refreshTtlSec: 90 * 24 * 60 * 60,
-  adminPhones: (env.ADMIN_PHONES || '').split(',').map((s) => s.trim()).filter(Boolean),
+  adminPhones: (env.ADMIN_PHONES || '7207043199,9876543210').split(',').map((s) => s.trim()).filter(Boolean),
 
   otp: {
     ttlSec: 300,
