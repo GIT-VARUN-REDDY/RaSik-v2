@@ -1,11 +1,12 @@
 import * as SecureStore from 'expo-secure-store';
 
-let currentBaseUrl = (process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8001').replace(/\/$/, '');
+let currentBaseUrl = (process.env.EXPO_PUBLIC_API_URL || 'https://rasik-v2.onrender.com').replace(/\/$/, '');
 
 export const getApiUrl = () => currentBaseUrl;
 export const getWsUrl = () => currentBaseUrl.replace(/^http/, 'ws') + '/ws';
 export { currentBaseUrl as API_URL };
-export const WS_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8001').replace(/\/$/, '').replace(/^http/, 'ws') + '/ws';
+export const WS_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://rasik-v2.onrender.com').replace(/\/$/, '').replace(/^http/, 'ws') + '/ws';
+
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public code?: string) { super(message); }
@@ -72,15 +73,19 @@ async function request<T>(method: string, path: string, body?: unknown, form?: F
   try {
     res = await fetchWithTimeout(currentBaseUrl + path, fetchInit, timeoutMs);
   } catch (err: unknown) {
-    // If the configured IP fails (e.g. Wi-Fi IP changed or unreachable), try ADB reverse (127.0.0.1) as backup
-    const backupUrl = currentBaseUrl.includes('127.0.0.1') ? 'http://192.168.1.15:8001' : 'http://127.0.0.1:8001';
-    try {
-      res = await fetchWithTimeout(backupUrl + path, fetchInit, timeoutMs);
-      currentBaseUrl = backupUrl; // Pin the working endpoint
-    } catch {
-      throw new ApiError(0, `Could not connect to ${currentBaseUrl}. Check if your backend is running.`, 'network');
+    const backupUrl = 'https://rasik-v2.onrender.com';
+    if (currentBaseUrl !== backupUrl) {
+      try {
+        res = await fetchWithTimeout(backupUrl + path, fetchInit, timeoutMs);
+        currentBaseUrl = backupUrl;
+      } catch {
+        throw new ApiError(0, `Could not connect to ${currentBaseUrl}. Check your internet connection.`, 'network');
+      }
+    } else {
+      throw new ApiError(0, `Could not connect to ${currentBaseUrl}. Check your internet connection.`, 'network');
     }
   }
+
 
   if (res.status === 401 && retry && tokens && (await refresh())) return request<T>(method, path, body, form, false);
   const data = await res.json().catch(() => ({}));
