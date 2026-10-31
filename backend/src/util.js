@@ -151,3 +151,12 @@ export function expoPush(token, title, body, data = {}) {
     body: JSON.stringify({ to: token, title, body, data, sound: 'default', priority: 'high', channelId: 'calls' }),
   }).catch(() => {});
 }
+
+export function hasContactInfo(text) {
+  if (!text) return false;
+  if (/(?:(?:\+|0{0,2})91[\s-]*)?[6789]\d{9}/.test(text)) return true;
+  if (/https?:\/\/|www\.|\.com|\.in|\.me|\.org/i.test(text)) return true;
+  if (/@[\w_]{3,}/i.test(text)) return true;
+  return false;
+}
+
