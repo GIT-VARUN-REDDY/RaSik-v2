@@ -51,18 +51,15 @@ function Shell() {
     <>
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg }, animation: 'fade' }}>
         <Stack.Screen name="index" />
-        <Stack.Protected guard={!me}><Stack.Screen name="(auth)" /></Stack.Protected>
-        <Stack.Protected guard={!!me && !onboarded}><Stack.Screen name="onboarding" /></Stack.Protected>
-        <Stack.Protected guard={!!female && !approved}><Stack.Screen name="verify" /></Stack.Protected>
-        <Stack.Protected guard={onboarded && me?.gender === 'male'}>
-          <Stack.Screen name="(men)" />
-          <Stack.Screen name="listener/[id]" options={{ animation: 'slide_from_right' }} />
-        </Stack.Protected>
-        <Stack.Protected guard={!!approved}><Stack.Screen name="(women)" /></Stack.Protected>
-        <Stack.Protected guard={onboarded}>
-          <Stack.Screen name="call" options={{ presentation: 'fullScreenModal', gestureEnabled: false, animation: 'slide_from_bottom' }} />
-        </Stack.Protected>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="verify" />
+        <Stack.Screen name="(men)" />
+        <Stack.Screen name="listener/[id]" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="(women)" />
+        <Stack.Screen name="call" options={{ presentation: 'fullScreenModal', gestureEnabled: false, animation: 'slide_from_bottom' }} />
       </Stack>
+
       <IncomingOverlay />
     </>
   );

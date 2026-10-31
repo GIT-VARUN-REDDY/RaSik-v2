@@ -3,6 +3,7 @@ import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, View } from 're
 import * as ImagePicker from 'expo-image-picker';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Screen, T } from '@/components/ui';
 import { api, ApiError, ListenerSelf, Me } from '@/lib/api';
@@ -13,19 +14,40 @@ type V = ListenerSelf & { challenge: string; hasAvatar: boolean; name: string };
 
 export default function Verify() {
   const { me, patch, reload, signOut } = useSession();
+  const router = useRouter();
   const [v, setV] = useState<V | null>(null);
   const [mode, setMode] = useState<'video' | 'voice' | null>(null);
   const [busy, setBusy] = useState(false);
   const [style, setStyle] = useState<StyleKey>('friend');
 
-  const load = useCallback(async () => { try { const r = await api.get<V>('/listener/verification'); setV(r); setStyle(r.style); return r; } catch { return null; } }, []);
+  const load = useCallback(async () => {
+    try {
+      const r = await api.get<V>('/listener/verification');
+      setV(r);
+      setStyle(r.style);
+      if (r.approval === 'approved') {
+        router.replace('/(women)');
+      }
+      return r;
+    } catch {
+      return null;
+    }
+  }, [router]);
+
   useEffect(() => { load(); }, [load]);
+
   // While waiting for review, quietly check for approval.
   useEffect(() => {
     if (v?.approval !== 'pending') return;
-    const t = setInterval(async () => { const m = await reload(); if (m?.listener && m.listener.approval !== 'pending') load(); }, 8000);
+    const t = setInterval(async () => {
+      const m = await reload();
+      if (m?.listener?.approval === 'approved') {
+        router.replace('/(women)');
+      }
+    }, 5000);
     return () => clearInterval(t);
-  }, [v?.approval, reload, load]);
+  }, [v?.approval, reload, router]);
+
 
   const photo = async (camera: boolean) => {
     const perm = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -57,8 +79,15 @@ export default function Verify() {
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 14 }}>
           <T size={64}>⏳</T>
           <T size={26} weight="900" style={{ textAlign: 'center' }}>We're reviewing your profile</T>
-          <T color={C.mute} style={{ textAlign: 'center' }} size={16}>Our team checks your photo, video and voice. This usually takes a few hours. You'll go live automatically once approved.</T>
-          <Button title="Check status" variant="ghost" onPress={async () => { await reload(); await load(); }} style={{ alignSelf: 'stretch', marginTop: 12 }} />
+          <Button title="Check status" variant="ghost" onPress={async () => {
+            const m = await reload();
+            if (m?.listener?.approval === 'approved') {
+              router.replace('/(women)');
+            } else {
+              await load();
+            }
+          }} style={{ alignSelf: 'stretch', marginTop: 12 }} />
+
           <Pressable onPress={signOut}><T color={C.mute}>Sign out</T></Pressable>
         </View>
       </Screen>
