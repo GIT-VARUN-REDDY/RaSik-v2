@@ -47,11 +47,12 @@ export default async function (app) {
     }).lean();
 
     const listenerMap = new Map(approvedListeners.map((l) => [l.user_id, l]));
+    const states = await Promise.all(users.map((u) => listenerState(u._id)));
 
-    let list = users.map((u) => {
+    let list = users.map((u, i) => {
       const l = listenerMap.get(u._id);
       return {
-        ...listenerCard(u, l, listenerState(u._id)),
+        ...listenerCard(u, l, states[i]),
         isFavorite: favIds.has(u._id),
         _t: l?.total_minutes || 0,
       };
@@ -69,7 +70,7 @@ export default async function (app) {
     const userId = req.user._id || req.user.id;
     const targetId = req.params.id;
 
-    const [u, l, blocked, fav] = await Promise.all([
+    const [u, l, blocked, fav, state] = await Promise.all([
       User.findOne({ _id: targetId, status: 'active' }).lean(),
       Listener.findOne({ user_id: targetId, approval: 'approved' }).lean(),
       Block.findOne({
@@ -79,12 +80,14 @@ export default async function (app) {
         ],
       }),
       Favorite.findOne({ user_id: userId, listener_id: targetId }),
+      listenerState(targetId),
     ]);
 
     if (!u || !l || blocked) throw new HttpError(404, 'Listener not found.');
 
-    return { ...listenerCard(u, l, listenerState(targetId)), isFavorite: !!fav };
+    return { ...listenerCard(u, l, state), isFavorite: !!fav };
   });
+
 
   app.post('/listeners/:id/favorite', auth, async (req) => {
     const userId = req.user._id || req.user.id;
